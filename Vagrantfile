@@ -53,6 +53,7 @@ Vagrant.configure("2") do |config|
             yum install -y git
             yum install -y wget
             yum install -y vim
+            yum install -y nano
 
             # Adaugare cheie publica SSH
 
