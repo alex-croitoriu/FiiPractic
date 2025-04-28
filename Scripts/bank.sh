@@ -2,7 +2,6 @@
 
 FILE="bank.csv"
 
-# Inițializare fișier dacă nu există
 if [ ! -f "$FILE" ]; then
     echo "Client,Balance" > "$FILE"
 fi
