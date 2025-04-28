@@ -1,0 +1,92 @@
+---
+- name: Configure security settings
+  hosts: all
+  become: yes
+  tasks:
+
+    - name: Disable firewalld permanently
+      service:
+        name: firewalld
+        state: stopped
+        enabled: no
+
+    - name: Set timezone to Europe/Bucharest
+      timezone:
+        name: Europe/Bucharest
+
+    - name: Install Root CA
+      copy:
+        src: /root/ca.crt
+        dest: /etc/pki/ca-trust/source/anchors/
+      notify: Update CA certificates
+
+    - name: Install htop
+      package:
+        name: htop
+        state: present
+
+    - name: Create custom SSH banner file
+      copy:
+        dest: /etc/ssh/banner
+        content: |
+          This server is restricted to authorized users only. All activities on this system are logged.
+          Unauthorized access will be fully investigated and reported to the appropriate law enforcement agencies.
+
+    - name: Set custom SSH banner
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^#?Banner'
+        line: 'Banner /etc/ssh/banner'
+        state: present
+      notify: Restart ssh service
+      
+    - name: Set PermitRootLogin to prohibit-password
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^#?PermitRootLogin'
+        line: 'PermitRootLogin prohibit-password'
+        state: present
+
+    - name: Set PasswordAuthentication to no
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^#?PasswordAuthentication'
+        line: 'PasswordAuthentication no'
+        state: present
+
+    - name: Set SELINUX to disabled
+      lineinfile:
+        path: /etc/sysconfig/selinux
+        regexp: '^SELINUX='
+        line: 'SELINUX=disabled'
+        state: present
+      notify: Reboot for SELINUX changes
+
+  handlers:
+
+    - name: Update CA certificates
+      command: update-ca-trust
+
+    - name: Restart ssh service
+      systemd:
+        name: sshd
+        state: reloaded
+
+    - name: Reboot for SELINUX changes
+      reboot:
+        msg: "Reboot for SELINUX changes"
+
+- name: Install packages on gitlab
+  hosts: gitlab
+  become: yes
+  tasks:
+
+    - name: Install gitlab-runner
+      package:
+        name: gitlab-runner
+        state: present
+
+    - name: Install gitlab-ce
+      package:
+        name: gitlab-ce
+        state: present

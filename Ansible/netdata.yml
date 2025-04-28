@@ -1,0 +1,58 @@
+---
+- name: Install and configure netdata
+  hosts: all
+  become: yes
+  tasks:
+    - name: Install Nginx
+      package:
+        name: nginx
+        state: present
+
+    - name: Start Nginx
+      systemd:
+        name: nginx
+        state: started
+
+    - name: Enable Nginx to start on boot
+      systemd:
+        name: nginx
+        enabled: yes
+
+    - name: Install netdata
+      package:
+        name: netdata
+        state: present
+
+    - name: Start netdata
+      systemd:
+        name: netdata
+        state: started
+
+    - name: Enable netdata to start on boot
+      systemd:
+        name: netdata
+        enabled: yes
+
+    - name: Check if certificate file exists
+      stat:
+        path: /usr/share/easy-rsa/3/pki/issued/netdata.crt
+      register: cert_stat
+
+    - name: Check if certificate key exists
+      stat:
+        path: /usr/share/easy-rsa/3/pki/private/netdata.key
+      register: key_stat
+
+    - name: Generate server certificate with EasyRSA
+      command: ./easyrsa --subject-alt-name=DNS:app.fiipractic.lan build-server-full app nopass
+      args:
+        chdir: /path/to/easyrsa
+      when: not cert_stat.stat.exists or not key_stat.stat.exists
+
+    - name: Copy nginx.conf file
+      copy:
+        src: ./netdata.nginx.conf
+        dest: /etc/nginx/nginx.conf
+
+    - name: Reload nginx
+      command: nginx -s reload
